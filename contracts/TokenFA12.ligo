@@ -97,7 +97,7 @@ block {
     else skip;
     acc.balance := abs(acc.balance - value);
     s.ledger[Tezos.sender] := acc;
-} with (list [Tezos.transaction(unit, value * 1mutez, getReceiver(Tezos.sender))], s)
+} with (list [Tezos.transaction(unit, value * 1mutez, (get_contract(Tezos.sender) : contract(unit)))], s)
 
 function main (const a : action; var s : storage) : (list(operation) * storage) is
 case a of 
