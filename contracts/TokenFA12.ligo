@@ -18,6 +18,7 @@ type mint_type is unit
 
 type action is 
 | Mint of mint_type
+| Default of mint_type
 | Redeem of redeem_type
 | Transfer of transfer_type
 | Approve of approve_type
@@ -32,12 +33,6 @@ case s.ledger[owner] of None -> record [
 ]
 | Some(acc) -> acc
 end
-
-function getReceiver(const a : address) : contract(unit) is 
-case (Tezos.get_entrypoint_opt("%default", a) : option(contract(unit))) of 
-    Some(contr) -> contr
-    | None -> (failwith("IllContract") : contract(unit))
-end;
 
 function transfer(const owner : address; const receiver : address; const value : nat; const s : storage) : storage is
 block {
@@ -97,11 +92,16 @@ block {
     else skip;
     acc.balance := abs(acc.balance - value);
     s.ledger[Tezos.sender] := acc;
-} with (list [Tezos.transaction(unit, value * 1mutez, (get_contract(Tezos.sender) : contract(unit)))], s)
+    const receiver : contract(unit) = case (Tezos.get_contract_opt (Tezos.sender) : option(contract(unit))) of
+        Some (contract) -> contract
+    | None -> (failwith ("InvalidContract") : (contract(unit)))
+    end;
+} with (list [Tezos.transaction(unit, value * 1mutez, receiver)], s)
 
 function main (const a : action; var s : storage) : (list(operation) * storage) is
 case a of 
 | Redeem(v) -> redeem(v, s)
+| Default(v) -> ((nil : list(operation)), mint(s))
 | Mint(v) -> ((nil : list(operation)), mint(s))
 | Transfer(v) -> ((nil : list(operation)), transfer( v.0, v.1.0, v.1.1, s))
 | Approve(v) -> ((nil : list(operation)), approve(v.0, v.1, s))
